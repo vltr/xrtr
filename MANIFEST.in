@@ -1,0 +1,31 @@
+graft docs
+graft src
+graft tests
+
+include .bumpversion.cfg
+include .coveragerc
+include .editorconfig
+include pyproject.toml
+
+include AUTHORS.rst
+include CHANGELOG.rst
+include CONTRIBUTING.rst
+include LICENSE
+include README.rst
+include requirements-dev.*
+
+include tox.ini .travis.yml
+
+exclude .ci
+exclude .python-version
+exclude .venv
+exclude .vscode
+exclude Makefile
+exclude requirements.txt
+exclude src/xrtr.c
+
+recursive-exclude .ci *
+recursive-exclude .vscode *
+recursive-exclude wheelhouse *
+
+global-exclude *.py[cod] __pycache__ *.so *.dylib

@@ -1,0 +1,314 @@
+from string import punctuation
+
+
+cdef:
+    str GLOB = '*'
+    int _get_position(int i, int n):
+        return n if i == -1 else i
+
+    int _findinstr(str source, str word, int s):
+        return source.find(word, s)
+
+
+cdef class RadixTreeNode:
+    cdef:
+        public str path
+        public dict methods
+        public dict no_conflict_methods
+        public list children
+        public str indices
+        public int indices_len
+        public int path_len
+
+    def __cinit__(self, str path=None, object handler=None, list methods=None):
+        if path is None:
+            self.path_len = 0
+        else:
+            self.path_len = len(path)
+        self.path = path
+        self.methods = dict()
+        self.no_conflict_methods = dict()
+        self.children = list()
+        self.indices = ""
+        self.indices_len = 0
+
+        self.add_methods(methods, handler)
+
+    def __repr__(self):
+        return (
+            "<RadixTreeNode path: {}, methods: {}, indices: \"{}\", children: "
+            "{}>".format(
+                "\"{}\"".format(self.path) if self.path is not None else "None",
+                self.methods,
+                self.indices,
+                self.children
+            )
+        )
+
+    def add_methods(self, methods, handler, no_conflict=False):
+        if not methods:
+            return
+
+        if no_conflict:
+            for method in methods:
+                if method in self.no_conflict_methods and handler in self.no_conflict_methods[method]:
+                    continue
+
+                if method in self.no_conflict_methods:
+                    self.no_conflict_methods[method].append(handler)
+                else:
+                    self.no_conflict_methods[method] = [handler]
+        else:
+            for method in methods:
+                if method in self.methods and self.methods[method] != handler:
+                    raise KeyError(
+                        "{} conflicts with existing handler "
+                        "{}".format(handler, self.methods[method])
+                    )
+
+                self.methods[method] = handler
+
+    def insert_child(self, str index, RadixTreeNode child):
+        return self._c_insert_child(index, child)
+
+    cdef RadixTreeNode _c_insert_child(self, str index, RadixTreeNode child):
+        cdef int pos = self.get_index_position(index)
+        self.indices = self.indices[:pos] + index + self.indices[pos:]
+        self.indices_len = len(self.indices)
+        self.children.insert(pos, child)
+        return child
+
+    cdef int get_index_position(self, str index):
+        if self.indices_len > 0:
+            return _get_position(self.indices.find(index), 0)
+        return 0
+
+    cdef RadixTreeNode get_child(self, str index):
+        cdef int i = self.get_index_position(index)
+        if i < self.indices_len and self.indices[i] == index:
+            return self.children[i]
+
+
+cdef class RadixTree:
+    cdef:
+        public RadixTreeNode root
+        str _VARIABLE
+        str _SEPARATOR
+
+    def __cinit__(self, str variable=None, str separator=None):
+        self.root = RadixTreeNode()
+        self.VARIABLE = variable or ':'
+        self.SEPARATOR = separator or '/'
+
+    def __repr__(self):
+        return repr(self.root)
+
+    @property
+    def config(self):
+        return {
+            'variable': self.VARIABLE,
+            'separator': self.SEPARATOR
+        }
+
+    @property
+    def SEPARATOR(self):
+        return self._SEPARATOR
+
+    @SEPARATOR.setter
+    def SEPARATOR(self, str value):
+        if self.root.children:
+            raise ValueError("You can't change the separator character after routes have been inserted")
+        if value is not None and value in punctuation and len(value) == 1:
+            if value == self._VARIABLE:
+                raise ValueError("The separator character must not equal the variable character")
+            self._SEPARATOR = value
+        else:
+            raise ValueError("The separator character must be of length one and a valid punctuation")
+
+    @property
+    def VARIABLE(self):
+        return self._VARIABLE
+
+    @VARIABLE.setter
+    def VARIABLE(self, str value):
+        if self.root.children:
+            raise ValueError("You can't change the separator character after routes have been inserted")
+        if value is not None and value in punctuation and len(value) == 1:
+            if value == self._SEPARATOR:
+                raise ValueError("The variable character must not equal the separator character")
+            self._VARIABLE = value
+        else:
+            raise ValueError("The variable character must be of length one and a valid punctuation")
+
+    def insert(self, str path, object handler, list methods, bint no_conflict=False):
+        if path is None or len(path.strip()) == 0 or path.strip()[0] != self._SEPARATOR:
+            raise ValueError("path cannot be None, empty or invalid")
+
+        i, node = self._c_insert(path, handler, methods, no_conflict)
+
+        if node is not None:
+            conflict = [path[:i] + p for p in self.traverse(node)]
+            raise ValueError('"{}" conflicts with {}'.format(path, conflict))
+
+    cdef list traverse(self, RadixTreeNode root):
+        cdef:
+            list r = []
+            RadixTreeNode child
+
+        if len(root.indices) != 0:
+            for i, c in enumerate(root.indices):
+                child = root.children[i]
+                path = "{}{}".format(c if c in [self._VARIABLE, GLOB] else "", child.path)
+
+                if child.methods and child.indices:
+                    r.append(path)
+
+                r.extend([path + p for p in self.traverse(child) or [""]])
+
+        return r
+
+    cdef tuple _c_insert(self, str path, object handler, list methods, bint no_conflict=False):
+        cdef:
+            int i = 0
+            int n = len(path)
+            int code = 0
+            int j
+            int p
+            int m
+            RadixTreeNode root
+            RadixTreeNode child
+
+        root = self.root
+
+        while i < n:
+            if not no_conflict:
+                if len(root.indices) != 0 and (root.indices[0] == GLOB or
+                    path[i] == GLOB and len(root.indices) != 0 or
+                    path[i] != self._VARIABLE and root.indices[0] == self._VARIABLE or
+                    path[i] == self._VARIABLE and root.indices[0] != self._VARIABLE or
+                    path[i] == self._VARIABLE and root.indices[0] == self._VARIABLE and
+                    path[i + 1: _get_position(_findinstr(path, self._SEPARATOR, i), n)] != root.children[0].path):
+
+                    return i, root
+
+            child = root.get_child(path[i])
+
+            if child is None:
+                p = _get_position(path.find(self._VARIABLE, i), n)
+                if p == n:
+                    p = _get_position(path.find(GLOB, i), n)
+                    if p == n:
+                        root.insert_child(path[i], RadixTreeNode(path[i:], handler, methods))
+                        return code, None
+
+                    root = root.insert_child(path[i], RadixTreeNode(path[i:p]))
+                    root.insert_child(GLOB, RadixTreeNode(path[p + 1:], handler, methods))
+                    return code, None
+
+                root = root.insert_child(path[i], RadixTreeNode(path[i:p]))
+                i = _get_position(path.find(self._SEPARATOR, p), n)
+                root = root.insert_child(self._VARIABLE, RadixTreeNode(path[p + 1: i]))
+
+                if i == n:
+                    root.add_methods(methods, handler, no_conflict)
+            else:
+                root = child
+                if path[i] == self._VARIABLE:
+                    i += len(root.path) + 1
+                    if i == n:
+                        root.add_methods(methods, handler, no_conflict)
+                else:
+                    j = 0
+                    m = len(root.path)
+
+                    while i < n and j < m and path[i] == root.path[j]:
+                        i += 1
+                        j += 1
+
+                    if j < m:
+                        child = RadixTreeNode(root.path[j:])
+                        child.methods = root.methods
+                        child.no_conflict_methods = root.no_conflict_methods
+                        child.children = root.children
+                        child.indices = root.indices
+                        child.indices_len = len(child.indices)
+
+                        root.path = root.path[:j]
+                        root.path_len = len(root.path)
+                        root.methods = {}
+                        root.no_conflict_methods = {}
+                        root.children = [child]
+                        root.indices = child.path[0]
+                        root.indices_len = len(root.indices)
+
+                    if i == n:
+                        root.add_methods(methods, handler, no_conflict)
+
+        return code, None
+
+    def get(self, str path, str method):
+        return self._c_get(path, method)
+
+    cdef tuple _c_get(self, str path, str method):
+        cdef:
+            int i = 0
+            int n = len(path)
+            int pn = n
+            int pos
+            dict params = {}
+            object handler = None
+            list no_conflict_handlers = []
+            RadixTreeNode root
+
+        root = self.root
+
+        while i < n:
+            if root.indices_len == 0:
+                return None, [], {}
+
+            if method in root.no_conflict_methods:
+                no_conflict_handlers += root.no_conflict_methods[method]
+
+            if root.indices[0] == self._VARIABLE:
+                root = root.children[0]
+                pos = _get_position(_findinstr(path, self._SEPARATOR, i), pn)
+                params[root.path] = path[i:pos]
+                i = pos
+
+            elif root.indices[0] == GLOB:
+                root = root.children[0]
+                params[root.path] = path[i:]
+                break
+            else:
+                # pos = root.get_index_position(path[i])
+                # if pos == root.indices_len or root.indices[pos] != path[i]:
+                #     return None, [], {}
+
+                # root = root.children[pos]
+                # pos = i + root.path_len
+
+                # if pos >= n or path[i: pos] != root.path:
+                #     return None, [], {}
+
+                # i = pos
+                root = root.get_child(path[i])
+
+                if root is None:
+                    return None, [], {}
+
+                pos = i + root.path_len
+
+                if path[i:pos] != root.path:
+                    return None, [], {}
+
+                i = pos
+
+        handler = root.methods.get(method)
+
+        if handler is None:
+            return None, [], {}
+
+        if method in root.no_conflict_methods:
+            no_conflict_handlers += root.no_conflict_methods[method]
+
+        return handler, no_conflict_handlers, params

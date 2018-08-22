@@ -1,0 +1,17 @@
+black
+bumpversion
+coverage
+Cython
+doc8
+flake8
+pycodestyle
+pygments
+pytest
+pytest-cov
+pytest-flakes
+pytest-pep8
+Sphinx
+sphinx-autobuild
+tox
+twine
+wheel

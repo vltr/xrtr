@@ -1,0 +1,25 @@
+[paths]
+source =
+    src/xrtr
+    */site-packages/xrtr
+
+[run]
+plugins = Cython.Coverage
+branch = True
+source =
+    xrtr
+    tests
+parallel = False
+
+[report]
+show_missing = True
+precision = 2
+omit =
+    *benchmarks*
+exclude_lines =
+    noqa
+    # Ignore continue statement in code as it can't be detected as covered
+    # due to an optimization by the Python interpreter. See coverage issue
+    # ( https://bitbucket.org/ned/coveragepy/issue/198/continue-marked-as-not-covered )
+    # and Python issue ( http://bugs.python.org/issue2506 ).
+    continue
