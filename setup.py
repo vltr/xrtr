@@ -3,10 +3,15 @@ import os
 import re
 import sys
 
-from Cython.Build import cythonize
 from setuptools import Extension
 from setuptools import find_packages
 from setuptools import setup
+
+try:
+    from Cython.Build import cythonize
+except ImportError:
+    cythonize = None
+
 
 _dev_build = "--inplace" in sys.argv
 _ci_build = "egg_info" in sys.argv or "install" in sys.argv
@@ -43,6 +48,26 @@ ext_modules = [
     )
 ]
 
+cy_modules = None
+
+if cythonize is not None:
+    cy_modules = cythonize(
+        ext_modules,
+        compiler_directives={
+            "optimize.use_switch": False,
+            "optimize.unpack_method_calls": False,
+            "language_level": 3,
+            "c_string_type": "bytes",
+            "c_string_encoding": "ascii",
+            "boundscheck": False,
+            "wraparound": False,
+            "embedsignature": _dev_build,
+            "linetrace": _dev_build,
+            "profile": _dev_build,
+            "binding": _dev_build,
+        },
+    )
+
 setup(
     name="xrtr",
     version="0.1.0",
@@ -61,22 +86,7 @@ setup(
     url="https://github.com/vltr/xrtr",
     setup_requires=["Cython"],
     install_requires=["setuptools>=19.0"],
-    ext_modules=cythonize(
-        ext_modules,
-        compiler_directives={
-            "optimize.use_switch": False,
-            "optimize.unpack_method_calls": False,
-            "language_level": 3,
-            "c_string_type": "bytes",
-            "c_string_encoding": "ascii",
-            "boundscheck": False,
-            "wraparound": False,
-            "embedsignature": _dev_build,
-            "linetrace": _dev_build,
-            "profile": _dev_build,
-            "binding": _dev_build,
-        },
-    ),
+    ext_modules=cy_modules,
     package_data={
         "xrtr": [
             "src/xrtr.pyx",

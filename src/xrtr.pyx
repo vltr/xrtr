@@ -79,9 +79,7 @@ cdef class RadixTreeNode:
         return child
 
     cdef int get_index_position(self, str index):
-        if self.indices_len > 0:
-            return _get_position(self.indices.find(index), 0)
-        return 0
+        return _get_position(self.indices.find(index), 0)
 
     cdef RadixTreeNode get_child(self, str index):
         cdef int i = self.get_index_position(index)
@@ -132,7 +130,7 @@ cdef class RadixTree:
     @VARIABLE.setter
     def VARIABLE(self, str value):
         if self.root.children:
-            raise ValueError("You can't change the separator character after routes have been inserted")
+            raise ValueError("You can't change the variable character after routes have been inserted")
         if value is not None and value in punctuation and len(value) == 1:
             if value == self._SEPARATOR:
                 raise ValueError("The variable character must not equal the separator character")

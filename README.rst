@@ -45,7 +45,7 @@ Inspiration
 License
 =======
 
-``xrtr`` is a free software distributed under the `MIT <https://choosealicense.com/licenses/mit/>`_ license, the same license as `Router's license <https://github.com/shiyanhui/Router#license>`_.
+``xrtr`` is a free software distributed under the `MIT <https://choosealicense.com/licenses/mit/>`_ license, the same license as `Router's license <https://raw.githubusercontent.com/shiyanhui/Router/df5974fec264345920ab1ed54b043493882e558f/README.rst>`_.
 
 To Do
 =====
