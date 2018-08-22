@@ -48,8 +48,8 @@ requirements-dev:
 docker-build: clean
 	docker pull quay.io/pypa/manylinux1_x86_64:latest
 	docker pull quay.io/pypa/manylinux1_i686:latest
-	docker run --rm -i -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/travis/build-wheels.sh
-	docker run --rm -i -v `pwd`:/io quay.io/pypa/manylinux1_i686 /io/travis/build-wheels.sh
+	docker run --rm -i -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/.ci/build-wheels.sh
+	docker run --rm -i -v `pwd`:/io quay.io/pypa/manylinux1_i686 /io/.ci/build-wheels.sh
 
 # release:
 # 	tox -e check
