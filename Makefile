@@ -46,10 +46,12 @@ requirements-dev:
 	pip-sync requirements-dev.txt
 
 docker-build: clean
+	python setup.py clean --all sdist
 	docker pull quay.io/pypa/manylinux1_x86_64:latest
 	docker pull quay.io/pypa/manylinux1_i686:latest
 	docker run --rm -i -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/.ci/build-wheels.sh
 	docker run --rm -i -v `pwd`:/io quay.io/pypa/manylinux1_i686 /io/.ci/build-wheels.sh
+	cp wheelhouse/*.whl dist/
 
 # release:
 # 	tox -e check

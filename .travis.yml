@@ -38,8 +38,8 @@ script:
     - tox -v
 after_success:
     # - tox -e report
-    - make test
-    - codecov
+    # - make test
+    # - codecov
 after_failure:
     - more .tox/log/* | cat
     - more .tox/*/log/* | cat

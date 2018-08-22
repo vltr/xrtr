@@ -52,4 +52,5 @@ To Do
 
 - There is a LOT of room for improvement (specially when migrating the code to C and Cython *and* the fact this is my first project with Cython);
 - Fix test coverage (and why is it not covering method declarations, as an example);
+- There is a lot of fixes to be done regarding Cython, distribution, naming conventions and so on;
 - Add Windows builds `using AppVeyor <https://packaging.python.org/guides/supporting-windows-using-appveyor/>`_;
