@@ -75,7 +75,7 @@ Those middlewares can be stacked without replication and, again, can be a functi
 Configuring identifiers
 -----------------------
 
-In case you're wondering: "*another path based router*?", don't worry: the ``separator`` (defaults to ``/``) and ``variable`` (defaults to ``:``) can be configurable (as long as they're punctuations). The glob identifier (defaults to ``*``) is not configurable.
+In case you're wondering: "*another path based router*?", don't worry: the ``separator`` (defaults to ``/``) and ``variable`` (defaults to ``:``) can be configurable (as long as they're `punctuations <https://docs.python.org/3.7/library/string.html#string.punctuation>`_). The glob identifier (defaults to ``*``) is not configurable.
 
 There are two ways of changing the identifiers: using the class constructor or changing them at runtime.
 

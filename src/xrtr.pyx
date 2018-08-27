@@ -278,17 +278,6 @@ cdef class RadixTree:
                 params[root.path] = path[i:]
                 break
             else:
-                # pos = root.get_index_position(path[i])
-                # if pos == root.indices_len or root.indices[pos] != path[i]:
-                #     return None, [], {}
-
-                # root = root.children[pos]
-                # pos = i + root.path_len
-
-                # if pos >= n or path[i: pos] != root.path:
-                #     return None, [], {}
-
-                # i = pos
                 root = root.get_child(path[i])
 
                 if root is None:
