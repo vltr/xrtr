@@ -3,11 +3,18 @@ from string import punctuation
 
 cdef:
     str GLOB = '*'
-    int _get_position(int i, int n):
-        return n if i == -1 else i
 
-    int _findinstr(str source, str word, int s):
-        return source.find(word, s)
+    inline int _get_position(int i, int n):
+        if i == -1:
+            return n
+        return i
+
+    inline int _findinstr(str source, str word, int start):
+        return source.find(word, start)
+
+    inline void _append_no_conflict_handlers_if_any(RadixTreeNode root, str method, list nc_handlers):
+        if root.no_conflict_methods.__contains__(method):
+            nc_handlers.extend(root.no_conflict_methods[method])
 
 
 cdef class RadixTreeNode:
@@ -19,6 +26,7 @@ cdef class RadixTreeNode:
         public str indices
         public int indices_len
         public int path_len
+        public dict optimized_index
 
     def __cinit__(self, str path=None, object handler=None, list methods=None):
         if path is None:
@@ -31,6 +39,7 @@ cdef class RadixTreeNode:
         self.children = list()
         self.indices = ""
         self.indices_len = 0
+        self.optimized_index = dict()
 
         self.add_methods(methods, handler)
 
@@ -68,7 +77,7 @@ cdef class RadixTreeNode:
 
                 self.methods[method] = handler
 
-    def insert_child(self, str index, RadixTreeNode child):
+    cpdef RadixTreeNode insert_child(self, str index, RadixTreeNode child):
         return self._c_insert_child(index, child)
 
     cdef RadixTreeNode _c_insert_child(self, str index, RadixTreeNode child):
@@ -85,6 +94,22 @@ cdef class RadixTreeNode:
         cdef int i = self.get_index_position(index)
         if i < self.indices_len and self.indices[i] == index:
             return self.children[i]
+
+    cdef optimize(self):
+        cdef:
+            str index
+            RadixTreeNode child
+
+        self.optimized_index.clear()  # if not already clean
+
+        for index in self.indices:
+            self.optimized_index[index] = self.get_child(index)
+
+        for child in self.children:
+            child.optimize()
+
+    cdef RadixTreeNode get_child_optimized(self, str index):
+        return self.optimized_index.get(index)
 
 
 cdef class RadixTree:
@@ -148,6 +173,8 @@ cdef class RadixTree:
             conflict = [path[:i] + p for p in self.traverse(node)]
             raise ValueError('"{}" conflicts with {}'.format(path, conflict))
 
+        self.root.optimize()
+
     cdef list traverse(self, RadixTreeNode root):
         cdef:
             list r = []
@@ -165,7 +192,7 @@ cdef class RadixTree:
 
         return r
 
-    cdef tuple _c_insert(self, str path, object handler, list methods, bint no_conflict=False):
+    cdef tuple _c_insert(self, str path, object handler, list methods, bint no_conflict):
         cdef:
             int i = 0
             int n = len(path)
@@ -244,32 +271,34 @@ cdef class RadixTree:
 
         return code, None
 
-    def get(self, str path, str method):
-        return self._c_get(path, method)
+    cpdef tuple get(self, str path, str method):
+        cdef dict params = {}
 
-    cdef tuple _c_get(self, str path, str method):
+        handler, nc_handlers = self._c_get(path, method, params)
+        if handler is None:
+            return None, [], {}
+        return handler, nc_handlers, params
+
+    cdef tuple _c_get(self, str path, str method, dict params):
         cdef:
             int i = 0
             int n = len(path)
-            int pn = n
             int pos
-            dict params = {}
             object handler = None
-            list no_conflict_handlers = []
+            list nc_handlers = []
             RadixTreeNode root
 
         root = self.root
 
         while i < n:
             if root.indices_len == 0:
-                return None, [], {}
+                return None, None
 
-            if method in root.no_conflict_methods:
-                no_conflict_handlers += root.no_conflict_methods[method]
+            _append_no_conflict_handlers_if_any(root, method, nc_handlers)
 
             if root.indices[0] == self._VARIABLE:
                 root = root.children[0]
-                pos = _get_position(_findinstr(path, self._SEPARATOR, i), pn)
+                pos = _get_position(_findinstr(path, self._SEPARATOR, i), n)
                 params[root.path] = path[i:pos]
                 i = pos
 
@@ -278,24 +307,23 @@ cdef class RadixTree:
                 params[root.path] = path[i:]
                 break
             else:
-                root = root.get_child(path[i])
+                root = root.get_child_optimized(path[i])
 
                 if root is None:
-                    return None, [], {}
+                    return None, None
 
                 pos = i + root.path_len
 
                 if path[i:pos] != root.path:
-                    return None, [], {}
+                    return None, None
 
                 i = pos
 
         handler = root.methods.get(method)
 
         if handler is None:
-            return None, [], {}
+            return None, None
 
-        if method in root.no_conflict_methods:
-            no_conflict_handlers += root.no_conflict_methods[method]
+        _append_no_conflict_handlers_if_any(root, method, nc_handlers)
 
-        return handler, no_conflict_handlers, params
+        return root.methods.get(method), nc_handlers

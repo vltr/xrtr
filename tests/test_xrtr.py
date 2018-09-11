@@ -235,6 +235,12 @@ def test_tree_full(endpoint_factory, middleware_factory):
     tree.insert("/foo/:name/:x/:y", endpoint_1, ["FOO", "BAR"])
     tree.insert("/static/*path", endpoint_1, ["FOO"])
 
+    with pytest.raises(ValueError):
+        tree.insert("/foo/:bar", endpoint_1, ["FOO"])
+
+    with pytest.raises(KeyError):
+        tree.insert("/foo", middleware_2, ["FOO"])
+
     r = tree.get("/foo/hello", "FOO")
     assert r[0] == endpoint_1
     assert r[1] == [middleware_1]
@@ -249,12 +255,6 @@ def test_tree_full(endpoint_factory, middleware_factory):
     assert r[0] == endpoint_1
     assert r[1] == []
     assert r[2] == {"path": "path/to/my/file.py"}
-
-    with pytest.raises(ValueError):
-        tree.insert("/foo/:bar", endpoint_1, ["FOO"])
-
-    with pytest.raises(KeyError):
-        tree.insert("/foo", middleware_2, ["FOO"])
 
     tree.insert(
         "/foo/:name/:x", middleware_3, ["FOO", "BAR"], no_conflict=True

@@ -22,9 +22,30 @@ _extra_cargs = []
 if int(os.getenv("FOR_PRODUCTION", "0")) == 1:
     _dev_build = False
     _ci_build = False
-    _extra_cargs.append("-O2")
+
+    # _extra_cargs.append("-O2")
+    # _extra_cargs.append("-ffloat-store")
+    # _extra_cargs.append("-fgcse")
+    # _extra_cargs.append("-floop-parallelize-all")
+    # _extra_cargs.append("-fivopts")
+    # _extra_cargs.append("-freorder-blocks-and-partition")
+    # _extra_cargs.append("-foptimize-sibling-calls")
+    # _extra_cargs.append("-freorder-functions")
+    # _extra_cargs.append("-ftree-vectorize")
+
+    _extra_cargs.append("-O3")
+    # _extra_cargs.append("-foptimize-strlen")
+    _extra_cargs.append("-ffloat-store")
+    _extra_cargs.append("-fpartial-inlining")
+    # _extra_cargs.append("-fgcse")
+    # _extra_cargs.append("-fivopts")
+    _extra_cargs.append("-freorder-blocks-and-partition")
+    _extra_cargs.append("-foptimize-sibling-calls")
+    _extra_cargs.append("-freorder-functions")
+    _extra_cargs.append("-flto")
+
 else:
-    _extra_cargs.append("-O0")
+    _extra_cargs.append("-Og")
     _define_macros += [
         ("CYTHON_PROFILE", 1),
         ("CYTHON_TRACE", 1),
