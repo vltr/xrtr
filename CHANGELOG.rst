@@ -2,6 +2,12 @@
 Changelog
 =========
 
+v0.1.2 on 2018-09-14
+--------------------
+
+* Minor tweaks and improvements (search optimizations).
+
+
 v0.1.1 on 2018-09-11
 --------------------
 

@@ -27,6 +27,8 @@ cdef class RadixTreeNode:
         public int indices_len
         public int path_len
         public dict optimized_index
+        public bint index_zero_is_variable
+        public bint index_zero_is_glob
 
     def __cinit__(self, str path=None, object handler=None, list methods=None):
         if path is None:
@@ -40,6 +42,8 @@ cdef class RadixTreeNode:
         self.indices = ""
         self.indices_len = 0
         self.optimized_index = dict()
+        self.index_zero_is_variable = 0
+        self.index_zero_is_glob = 0
 
         self.add_methods(methods, handler)
 
@@ -95,7 +99,7 @@ cdef class RadixTreeNode:
         if i < self.indices_len and self.indices[i] == index:
             return self.children[i]
 
-    cdef optimize(self):
+    cdef optimize(self, RadixTree tree):
         cdef:
             str index
             RadixTreeNode child
@@ -105,8 +109,15 @@ cdef class RadixTreeNode:
         for index in self.indices:
             self.optimized_index[index] = self.get_child(index)
 
+        if self.indices_len > 0:
+            self.index_zero_is_variable = self.indices[0] == tree.VARIABLE
+            self.index_zero_is_glob = self.indices[0] == GLOB
+        else:
+            self.index_zero_is_variable = 0
+            self.index_zero_is_glob = 0
+
         for child in self.children:
-            child.optimize()
+            child.optimize(tree)
 
     cdef RadixTreeNode get_child_optimized(self, str index):
         return self.optimized_index.get(index)
@@ -173,7 +184,7 @@ cdef class RadixTree:
             conflict = [path[:i] + p for p in self.traverse(node)]
             raise ValueError('"{}" conflicts with {}'.format(path, conflict))
 
-        self.root.optimize()
+        self.root.optimize(self)
 
     cdef list traverse(self, RadixTreeNode root):
         cdef:
@@ -296,13 +307,15 @@ cdef class RadixTree:
 
             _append_no_conflict_handlers_if_any(root, method, nc_handlers)
 
-            if root.indices[0] == self._VARIABLE:
+            # if root.indices[0] == self._VARIABLE:
+            if root.index_zero_is_variable:
                 root = root.children[0]
                 pos = _get_position(_findinstr(path, self._SEPARATOR, i), n)
                 params[root.path] = path[i:pos]
                 i = pos
 
-            elif root.indices[0] == GLOB:
+            # elif root.indices[0] == GLOB:
+            elif root.index_zero_is_glob:
                 root = root.children[0]
                 params[root.path] = path[i:]
                 break
