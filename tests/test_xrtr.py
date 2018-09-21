@@ -271,3 +271,30 @@ def test_tree_full(endpoint_factory, middleware_factory):
     assert r[0] is None
     assert r[1] == []
     assert r[2] == {}
+
+
+def test_duplicate_parameters(endpoint_factory):
+    endpoint_1 = endpoint_factory(1)
+    tree = RadixTree()
+    tree.insert("/hello/:bar", endpoint_1, ["BAR"])
+
+    with pytest.raises(ValueError):
+        tree.insert("/hello/:bar/:bar", endpoint_1, ["BAR"])
+
+    with pytest.raises(ValueError):
+        tree.insert("/hello/:bar/world/:bar", endpoint_1, ["BAR"])
+
+    with pytest.raises(ValueError):
+        tree.insert("/hello/:bar/world/*bar", endpoint_1, ["BAR"])
+
+    another_tree = RadixTree(variable=".", separator="|")
+    another_tree.insert("|hello|.bar", endpoint_1, ["BAR"])
+
+    with pytest.raises(ValueError):
+        another_tree.insert("|hello|.bar|.bar", endpoint_1, ["BAR"])
+
+    with pytest.raises(ValueError):
+        another_tree.insert("|hello|.bar|world|.bar", endpoint_1, ["BAR"])
+
+    with pytest.raises(ValueError):
+        another_tree.insert("|hello|.bar|world|*bar", endpoint_1, ["BAR"])

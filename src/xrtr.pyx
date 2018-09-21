@@ -1,3 +1,4 @@
+import re
 from string import punctuation
 
 
@@ -128,11 +129,13 @@ cdef class RadixTree:
         public RadixTreeNode root
         str _VARIABLE
         str _SEPARATOR
+        object _VAR_PATTERN
 
     def __cinit__(self, str variable=None, str separator=None):
         self.root = RadixTreeNode()
         self.VARIABLE = variable or ':'
         self.SEPARATOR = separator or '/'
+        self._VAR_PATTERN = re.compile(r"(?:[{}\*])([a-zA-Z0-9\_]+)".format(re.escape(self._VARIABLE)))
 
     def __repr__(self):
         return repr(self.root)
@@ -177,6 +180,13 @@ cdef class RadixTree:
     def insert(self, str path, object handler, list methods, bint no_conflict=False):
         if path is None or len(path.strip()) == 0 or path.strip()[0] != self._SEPARATOR:
             raise ValueError("path cannot be None, empty or invalid")
+
+        parts = path.strip(self.SEPARATOR).split(self.SEPARATOR)
+        matches = [self._VAR_PATTERN.match(p) for p in parts]
+        all_matches = [m.group(1) for m in matches if m is not None]
+
+        if len(all_matches) != len(set(all_matches)):
+            raise ValueError('"{}" has at least one duplicate variable name'.format(path))
 
         i, node = self._c_insert(path, handler, methods, no_conflict)
 
@@ -307,14 +317,12 @@ cdef class RadixTree:
 
             _append_no_conflict_handlers_if_any(root, method, nc_handlers)
 
-            # if root.indices[0] == self._VARIABLE:
             if root.index_zero_is_variable:
                 root = root.children[0]
                 pos = _get_position(_findinstr(path, self._SEPARATOR, i), n)
                 params[root.path] = path[i:pos]
                 i = pos
 
-            # elif root.indices[0] == GLOB:
             elif root.index_zero_is_glob:
                 root = root.children[0]
                 params[root.path] = path[i:]
