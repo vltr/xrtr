@@ -91,7 +91,7 @@ if cythonize is not None:
 
 setup(
     name="xrtr",
-    version="0.1.3",
+    version="0.1.4",
     description="A Radix Tree based router for HTTP and other routing needs "
     "with support for middlewares and endpoints with a Cython "
     "boost",
