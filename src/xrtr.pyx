@@ -123,7 +123,7 @@ cdef class RadixTreeNode:
         for child in self.children:
             child.optimize(tree)
 
-    cdef RadixTreeNode get_child_optimized(self, str index):
+    cdef inline RadixTreeNode get_child_optimized(self, str index):
         return self.optimized_index.get(index)
 
 
@@ -359,3 +359,45 @@ cdef class RadixTree:
         _append_no_conflict_handlers_if_any(root, method, nc_handlers)
 
         return root.methods.get(method), nc_handlers
+
+    cpdef set methods_for(self, str path):
+        methods = self._c_methods_for(path)
+        if methods is None:
+            return set()
+        return methods
+
+    cdef set _c_methods_for(self, str path):
+        cdef:
+            int i = 0
+            int n = len(path)
+            int pos
+            RadixTreeNode root
+
+        root = self.root
+
+        while i < n:
+            if root.indices_len == 0:
+                return None
+
+            if root.index_zero_is_variable:
+                root = root.children[0]
+                pos = _get_position(_findinstr(path, self._SEPARATOR, i), n)
+                i = pos
+
+            elif root.index_zero_is_glob:
+                root = root.children[0]
+                break
+            else:
+                root = root.get_child_optimized(path[i])
+
+                if root is None:
+                    return None
+
+                pos = i + root.path_len
+
+                if path[i:pos] != root.path:
+                    return None
+
+                i = pos
+
+        return set(root.methods.keys())

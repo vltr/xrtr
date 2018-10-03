@@ -4,7 +4,7 @@
 Using ``xrtr``
 ==============
 
-``xrtr`` is a fast (but can be faster) path router for Python written in Cython, primarily for web frameworks but it's flexible to be used with other conventions as well. It is based on a compressed dynamic trie (radix tree) structure for efficient matching, with support for variables, endpoints, layered middlewares (or any other objects) and very fast speeds provided by a Cython optimization of the tree.
+``xrtr`` is a fast (and will be faster) path router for Python written in Cython, primarily for web frameworks but it's flexible to be used with other conventions as well. It is based on a compressed dynamic trie (radix tree) structure for efficient matching, with support for variables, endpoints, layered middlewares (or any other objects) and very fast speeds provided by a Cython optimization of the tree.
 
 The tree
 --------
@@ -128,6 +128,45 @@ Using the constructor
 
     >>> tree.config
     {'variable': '$', 'separator': '.'}
+
+Method utilities
+----------------
+
+Starting with ``xrtr`` 0.2.0, some changes were required to quickly identify if the given ``route`` does in fact exists, but the requested ``method`` is not available. Enter in scene: the ``sentinel`` object.
+
+Sentinel object
+~~~~~~~~~~~~~~~
+
+Everytime you search for a route and its specific method, sometimes the route even exists (let's say, ``/foo``), but the requested method doesn't (``GET`` exists, ``OPTIONS`` don't). This can be quickly checked against the ``sentinel`` object (or property, in ``xrtr`` case):
+
+.. code-block:: pycon
+
+    >>> from xrtr import RadixTree
+
+    >>> tree = RadixTree()
+
+    >>> tree.insert("/foo", some_endpoint, ["GET"])
+
+    >>> handler, middlewares, params = tree.get("/foo", "OPTIONS")
+
+    >>> handler is tree.sentinel
+    True
+
+This way, it is simple to deal with more fine grained errors, such as ``HTTP 405``.
+
+Available methods
+~~~~~~~~~~~~~~~~~
+
+In case you need just to get the available methods of one simple endpoint (for informational purposes), you can perform that by using the ``methods_for`` method:
+
+    >>> from xrtr import RadixTree
+
+    >>> tree = RadixTree()
+
+    >>> tree.insert("/foo", some_endpoint, ["GET"])
+
+    >>> tree.methods_for("/foo")
+    {'GET'}
 
 Code coverage
 ~~~~~~~~~~~~~

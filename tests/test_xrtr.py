@@ -204,6 +204,25 @@ def test_tree_single_endpoint(endpoint_factory):
     assert r[2] == {}
 
 
+def test_tree_methods_for(endpoint_factory):
+    endpoint_1 = endpoint_factory(1)
+    endpoint_2 = endpoint_factory(2)
+
+    tree = RadixTree()
+
+    tree.insert("/foo/:bar", endpoint_1, ["BAR"])
+    tree.insert("/foo/:bar", endpoint_2, ["FOO"])
+
+    r = tree.methods_for("/foo/hello")
+    assert r == {"BAR", "FOO"}
+
+    r = tree.methods_for("/foo/world")
+    assert r == {"BAR", "FOO"}
+
+    r = tree.methods_for("/foooo")
+    assert r == set()
+
+
 def test_tree_root_endpoint(endpoint_factory):
     endpoint_1 = endpoint_factory(1)
     tree = RadixTree()
@@ -273,6 +292,29 @@ def test_tree_full(endpoint_factory, middleware_factory):
     assert r[2] == {}
 
     r = tree.get("/foo/hello/a/b", "BAZ")
+    assert r[0] is tree.sentinel
+    assert r[1] == []
+    assert r[2] == {}
+
+    m = tree.methods_for("/foo/hello/aa")
+    assert m == set()
+
+    m = tree.methods_for("/foo/hello/a/b")
+    assert m == {"BAR", "FOO"}
+
+    m = tree.methods_for("/foo")
+    assert m == {"FOO"}
+
+    m = tree.methods_for("/static/abra/cadabra")
+    assert m == {"FOO"}
+
+
+def test_sentinel(endpoint_factory):
+    endpoint_1 = endpoint_factory(1)
+    tree = RadixTree()
+    tree.insert("/hello/:bar", endpoint_1, ["BAR"])
+
+    r = tree.get("/hello/world", "BAZ")
     assert r[0] is tree.sentinel
     assert r[1] == []
     assert r[2] == {}
