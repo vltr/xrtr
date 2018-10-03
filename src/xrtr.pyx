@@ -1,9 +1,11 @@
+import cython
 import re
 from string import punctuation
 
 
 cdef:
     str GLOB = '*'
+    object SENTINEL = object()
 
     inline int _get_position(int i, int n):
         if i == -1:
@@ -18,6 +20,7 @@ cdef:
             nc_handlers.extend(root.no_conflict_methods[method])
 
 
+@cython.freelist(1024)
 cdef class RadixTreeNode:
     cdef:
         public str path
@@ -28,8 +31,8 @@ cdef class RadixTreeNode:
         public int indices_len
         public int path_len
         public dict optimized_index
-        public bint index_zero_is_variable
-        public bint index_zero_is_glob
+        readonly bint index_zero_is_variable
+        readonly bint index_zero_is_glob
 
     def __cinit__(self, str path=None, object handler=None, list methods=None):
         if path is None:
@@ -177,6 +180,10 @@ cdef class RadixTree:
         else:
             raise ValueError("The variable character must be of length one and a valid punctuation")
 
+    @property
+    def sentinel(self):
+        return SENTINEL
+
     def insert(self, str path, object handler, list methods, bint no_conflict=False):
         if path is None or len(path.strip()) == 0 or path.strip()[0] != self._SEPARATOR:
             raise ValueError("path cannot be None, empty or invalid")
@@ -298,6 +305,8 @@ cdef class RadixTree:
         handler, nc_handlers = self._c_get(path, method, params)
         if handler is None:
             return None, [], {}
+        elif handler == SENTINEL:
+            return SENTINEL, [], {}
         return handler, nc_handlers, params
 
     cdef tuple _c_get(self, str path, str method, dict params):
@@ -343,6 +352,8 @@ cdef class RadixTree:
         handler = root.methods.get(method)
 
         if handler is None:
+            if root.methods:
+                return SENTINEL, None
             return None, None
 
         _append_no_conflict_handlers_if_any(root, method, nc_handlers)

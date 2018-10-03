@@ -272,6 +272,11 @@ def test_tree_full(endpoint_factory, middleware_factory):
     assert r[1] == []
     assert r[2] == {}
 
+    r = tree.get("/foo/hello/a/b", "BAZ")
+    assert r[0] is tree.sentinel
+    assert r[1] == []
+    assert r[2] == {}
+
 
 def test_duplicate_parameters(endpoint_factory):
     endpoint_1 = endpoint_factory(1)

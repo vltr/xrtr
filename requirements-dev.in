@@ -13,5 +13,5 @@ pytest-pep8
 Sphinx
 sphinx-autobuild
 tox
-twine
+twine==1.11.0
 wheel
