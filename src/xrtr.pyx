@@ -34,7 +34,7 @@ cdef class RadixTreeNode:
         readonly bint index_zero_is_variable
         readonly bint index_zero_is_glob
 
-    def __cinit__(self, str path=None, object handler=None, list methods=None):
+    def __cinit__(self, str path=None, object handler=None, list methods=None, bint no_conflict=False):
         if path is None:
             self.path_len = 0
         else:
@@ -49,7 +49,8 @@ cdef class RadixTreeNode:
         self.index_zero_is_variable = 0
         self.index_zero_is_glob = 0
 
-        self.add_methods(methods, handler)
+        if handler is not None and methods is not None:
+            self.add_methods(methods, handler, no_conflict)
 
     def __repr__(self):
         return (
@@ -225,11 +226,8 @@ cdef class RadixTree:
             int i = 0
             int n = len(path)
             int code = 0
-            int j
-            int p
-            int m
-            RadixTreeNode root
-            RadixTreeNode child
+            int j, p, m
+            RadixTreeNode root, child
 
         root = self.root
 
@@ -251,11 +249,11 @@ cdef class RadixTree:
                 if p == n:
                     p = _get_position(path.find(GLOB, i), n)
                     if p == n:
-                        root.insert_child(path[i], RadixTreeNode(path[i:], handler, methods))
+                        root.insert_child(path[i], RadixTreeNode(path[i:], handler, methods, no_conflict))
                         return code, None
 
                     root = root.insert_child(path[i], RadixTreeNode(path[i:p]))
-                    root.insert_child(GLOB, RadixTreeNode(path[p + 1:], handler, methods))
+                    root.insert_child(GLOB, RadixTreeNode(path[p + 1:], handler, methods, no_conflict))
                     return code, None
 
                 root = root.insert_child(path[i], RadixTreeNode(path[i:p]))

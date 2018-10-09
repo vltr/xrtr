@@ -33,6 +33,7 @@ clean: cleanpycache
 	rm -rf ./src/*.egg-info
 	rm -rf ./src/*.c
 	rm -rf ./src/*.so
+	rm -rf ./wheelhouse
 
 test: clean
 	python setup.py build_ext --force --inplace
@@ -46,6 +47,7 @@ requirements-dev:
 	pip-sync requirements-dev.txt
 
 docker-build: clean
+	mkdir ./wheelhouse
 	python setup.py clean --all sdist
 	docker pull quay.io/pypa/manylinux1_x86_64:latest
 	docker pull quay.io/pypa/manylinux1_i686:latest

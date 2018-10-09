@@ -2,6 +2,12 @@
 Changelog
 =========
 
+v0.2.1 on 2018-10-09
+--------------------
+
+* Fixed bug where the ``no_conflict`` flag where not being propagated to the ``add_method`` if a "non-conflicting method" was the first node being created in that tree.
+
+
 v0.2.0 on 2018-10-03
 --------------------
 

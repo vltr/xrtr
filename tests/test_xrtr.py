@@ -345,3 +345,23 @@ def test_duplicate_parameters(endpoint_factory):
 
     with pytest.raises(ValueError):
         another_tree.insert("|hello|.bar|world|*bar", endpoint_1, ["BAR"])
+
+
+def test_tree_middleware_first(endpoint_factory, middleware_factory):
+    endpoint_1 = endpoint_factory(1)
+    middleware_1 = middleware_factory(1)
+
+    tree = RadixTree()
+
+    tree.insert("/hello", middleware_1, ["BAR"], no_conflict=True)
+    tree.insert("/hello/world", endpoint_1, ["BAR"])
+
+    r = tree.get("/hello", "BAR")
+    assert r[0] is None
+    assert r[1] == []
+    assert r[2] == {}
+
+    r = tree.get("/hello/world", "BAR")
+    assert r[0] == endpoint_1
+    assert r[1] == [middleware_1]
+    assert r[2] == {}
